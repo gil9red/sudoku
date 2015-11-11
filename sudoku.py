@@ -3,6 +3,7 @@
 
 __author__ = 'ipetrash'
 
+import copy
 import sys
 
 from PySide.QtGui import *
@@ -22,17 +23,31 @@ class Widget(QWidget):
         self.x_highlight_cell = -1
         self.y_highlight_cell = -1
 
-        # TODO: числа, которые уже есть в матрице сделать неизменяемыми и с другим оформлением
         self.matrix, self.sudoku_size = sudoku_generator.gen()
+        self.orig_matrix = copy.deepcopy(self.matrix)
+
+        # Булевая матрица, описывающая местоположения элементов судоку, которые будут по умолчанию.
+        # Их нельзя редактировать и выглядят внешне по другому
+        self.def_num_matrix = [
+            [bool(i) for i in row]
+            for row in self.orig_matrix
+        ]
 
         self.setMouseTracking(True)
+
+        self.setFixedSize(300, 300)
 
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
 
+        # if event.key() == Qt.Key_Space:
+        #     self.matrix, self.sudoku_size = sudoku_generator.gen()
+        #     self.orig_matrix = copy.deepcopy(self.matrix)
+        #     self.update()
+
         if event.key() == Qt.Key_Space:
             # Получим список решения этой судоку
-            for solution in solver.solve_sudoku(self.sudoku_size, self.matrix):
+            for solution in solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)):
                 # Берем самое первое
                 self.matrix = solution
 
@@ -59,49 +74,84 @@ class Widget(QWidget):
 
         self.update()
 
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+
+        pos = event.pos()
+        x, y = pos.x() // self.cell_size, pos.y() // self.cell_size
+
+        # Нельзя изменять дефолтную ячейку
+        if not self.def_num_matrix[x][y]:
+            self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+
+            # Получим список решения этой судоку
+            for solution in solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)):
+                if solution == self.matrix:
+                    QMessageBox.information(None, '', 'Совпало, мать его!')
+                    break
+
+            self.update()
+
     def paintEvent(self, event):
         super().paintEvent(event)
 
         painter = QPainter(self)
 
+        # Рисование цифр в ячейки таблицы
+        for i in range(self.matrix_size):
+            for j in range(self.matrix_size):
+                # Если текущая ячейка относится к дефолтной судоку
+                if self.def_num_matrix[i][j]:
+                    painter.save()
+                    # painter.setPen()
+                    painter.setBrush(Qt.yellow)
+                    x = i * self.cell_size
+                    y = j * self.cell_size
+                    w, h = self.cell_size, self.cell_size
+                    painter.drawRect(x, y, w, h)
+                    painter.restore()
+
+        # TODO: Закомментировано
         # Если индекс ячейки под курсором валидный
         if 0 <= self.x_highlight_cell < self.matrix_size and 0 <= self.y_highlight_cell < self.matrix_size:
-            # Выделение всего столбца и строки пересекающих ячейку под курсором
-            painter.save()
-            painter.setBrush(Qt.lightGray)
+        #     # Выделение всего столбца и строки пересекающих ячейку под курсором
+        #     painter.save()
+        #     painter.setBrush(Qt.lightGray)
+        #
+        #     # Выделение строки
+        #     for i in range(self.matrix_size):
+        #         painter.drawRect(i * self.cell_size,
+        #                          self.y_highlight_cell * self.cell_size,
+        #                          self.cell_size,
+        #                          self.cell_size)
+        #
+        #     # Выделение столбца
+        #     for j in range(self.matrix_size):
+        #         painter.drawRect(self.x_highlight_cell * self.cell_size,
+        #                          j * self.cell_size,
+        #                          self.cell_size,
+        #                          self.cell_size)
+        #
+        #     painter.restore()
 
-            # Выделение строки
-            for i in range(self.matrix_size):
-                painter.drawRect(i * self.cell_size,
-                                 self.y_highlight_cell * self.cell_size,
+            x, y = self.x_highlight_cell, self.y_highlight_cell
+
+            # Не подсвечиваем дефолтную ячейку
+            if not self.def_num_matrix[x][y]:
+                # Выделение ячейки под курсором
+                painter.save()
+                painter.setBrush(Qt.darkYellow)
+                painter.drawRect(x * self.cell_size,
+                                 y * self.cell_size,
                                  self.cell_size,
                                  self.cell_size)
-
-            # Выделение столбца
-            for j in range(self.matrix_size):
-                painter.drawRect(self.x_highlight_cell * self.cell_size,
-                                 j * self.cell_size,
-                                 self.cell_size,
-                                 self.cell_size)
-
-            painter.restore()
-
-            # Выделение ячейки под курсором
-            painter.save()
-            painter.setBrush(Qt.yellow)
-            painter.drawRect(self.x_highlight_cell * self.cell_size,
-                             self.y_highlight_cell * self.cell_size,
-                             self.cell_size,
-                             self.cell_size)
-            painter.restore()
+                painter.restore()
 
         # Рисование цифр в ячейки таблицы
         for i in range(self.matrix_size):
             for j in range(self.matrix_size):
                 num = self.matrix[i][j]
-
-                # Проверяем, что число не находится в диапазоне от 1 до 9
-                if not 1 <= num <= 9:
+                if not num:
                     continue
 
                 num = str(num)
