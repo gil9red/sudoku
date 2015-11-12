@@ -23,6 +23,18 @@ class Widget(QWidget):
         self.x_highlight_cell = -1
         self.y_highlight_cell = -1
 
+        self.setMouseTracking(True)
+        self.setFixedSize(300, 300)
+
+        self.matrix = None
+        self.sudoku_size = None
+        self.orig_matrix = None
+        self.def_num_matrix = None
+        self.sudoku_solutions = None
+
+        self.new_sudoku()
+
+    def new_sudoku(self):
         self.matrix, self.sudoku_size = sudoku_generator.gen()
         self.orig_matrix = copy.deepcopy(self.matrix)
 
@@ -33,27 +45,24 @@ class Widget(QWidget):
             for row in self.orig_matrix
         ]
 
-        self.setMouseTracking(True)
-
-        self.setFixedSize(300, 300)
+        # Получим список решения этой судоку
+        self.sudoku_solutions = list(solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)))
 
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
 
         # if event.key() == Qt.Key_Space:
-        #     self.matrix, self.sudoku_size = sudoku_generator.gen()
-        #     self.orig_matrix = copy.deepcopy(self.matrix)
+        #     self.new_sudoku()
         #     self.update()
 
         if event.key() == Qt.Key_Space:
             # Получим список решения этой судоку
-            for solution in solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)):
+            for solution in self.sudoku_solutions:
                 # Берем самое первое
-                self.matrix = solution
+                self.matrix = copy.deepcopy(solution)
 
                 # Перерисовываем окно
                 self.update()
-
                 break
 
     def resizeEvent(self, event):
@@ -85,7 +94,7 @@ class Widget(QWidget):
             self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
 
             # Получим список решения этой судоку
-            for solution in solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)):
+            for solution in self.sudoku_solutions:
                 if solution == self.matrix:
                     QMessageBox.information(None, '', 'Совпало, мать его!')
                     break
