@@ -107,6 +107,10 @@ def gen():
         example.show()
         print("---------------------------")
 
+    # TODO: Добавить возможность указывать сложность
+    print(example.n ** 4)
+    iterator = example.n ** 4 - 30
+
     while iterator < example.n ** 4:
         # Выбираем случайную ячейку
         i, j = random.randrange(0, example.n * example.n, 1), random.randrange(0, example.n * example.n, 1)

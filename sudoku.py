@@ -51,19 +51,21 @@ class Widget(QWidget):
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
 
-        # if event.key() == Qt.Key_Space:
-        #     self.new_sudoku()
-        #     self.update()
-
         if event.key() == Qt.Key_Space:
-            # Получим список решения этой судоку
-            for solution in self.sudoku_solutions:
-                # Берем самое первое
-                self.matrix = copy.deepcopy(solution)
+            self.new_sudoku()
+            self.update()
 
-                # Перерисовываем окно
-                self.update()
-                break
+        # TODO: если и подставлять одно из решений, то решения находить на основе копии текущей таблицы, а не
+        # дефотной
+        # if event.key() == Qt.Key_Space:
+        #     # Получим список решения этой судоку
+        #     for solution in self.sudoku_solutions:
+        #         # Берем самое первое
+        #         self.matrix = copy.deepcopy(solution)
+        #
+        #         # Перерисовываем окно
+        #         self.update()
+        #         break
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -91,12 +93,17 @@ class Widget(QWidget):
 
         # Нельзя изменять дефолтную ячейку
         if not self.def_num_matrix[x][y]:
-            self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+            if event.button() == Qt.LeftButton:
+                self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+            elif event.button() == Qt.RightButton:
+                self.matrix[x][y] = self.matrix[x][y] - 1 if self.matrix[x][y] > 0 else 9
+            elif event.button() == Qt.MiddleButton:
+                self.matrix[x][y] = 0
 
             # Получим список решения этой судоку
             for solution in self.sudoku_solutions:
                 if solution == self.matrix:
-                    QMessageBox.information(None, '', 'Совпало, мать его!')
+                    QMessageBox.information(None, 'Победа', 'Совпало, мать его!')
                     break
 
             self.update()
@@ -184,14 +191,23 @@ class Widget(QWidget):
         y1, y2 = 0, 0
 
         for i in range(self.matrix_size + 1):
+            painter.save()
+            painter.setPen(QPen(Qt.black, 5.0 if i % 3 == 0 and i and i < self.matrix_size else 1.0))
             painter.drawLine(0, y1, self.cell_size * self.matrix_size, y2)
+            painter.restore()
+
             y1 += self.cell_size
             y2 += self.cell_size
 
         x1, x2 = 0, 0
 
         for i in range(self.matrix_size + 1):
+            painter.save()
+            painter.setPen(QPen(Qt.black, 5.0 if i % 3 == 0 and i and i < self.matrix_size else 1.0))
             painter.drawLine(x1, 0, x2, self.cell_size * self.matrix_size)
+            painter.restore()
+
+            # painter.drawLine(x1, 0, x2, self.cell_size * self.matrix_size)
             x1 += self.cell_size
             x2 += self.cell_size
 
