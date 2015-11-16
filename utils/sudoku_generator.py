@@ -108,7 +108,6 @@ def gen():
         print("---------------------------")
 
     # TODO: Добавить возможность указывать сложность
-    print(example.n ** 4)
     iterator = example.n ** 4 - 30
 
     while iterator < example.n ** 4:
