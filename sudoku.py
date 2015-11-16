@@ -6,8 +6,8 @@ __author__ = 'ipetrash'
 import copy
 import sys
 
-from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide.QtGui import QApplication, QWidget, QPainter, QPen, QMessageBox
+from PySide.QtCore import Qt
 
 from utils import solver, sudoku_generator
 
@@ -17,6 +17,7 @@ class Widget(QWidget):
         super().__init__()
         self.setWindowTitle('Sudoku')
 
+        # Пусть будет 20, все-равно после первого события resizeEvent значение изменится
         self.cell_size = 20
         self.matrix_size = 9
 
@@ -24,7 +25,14 @@ class Widget(QWidget):
         self.y_highlight_cell = -1
 
         self.setMouseTracking(True)
-        self.setFixedSize(300, 300)
+
+        self.default_size = 300
+
+        self.default_pen_size_1 = 1.0
+        self.default_pen_size_2 = 5.0
+        self.min_default_pen_size_2 = 2.0
+
+        self.resize(self.default_size, self.default_size)
 
         self.matrix = None
         self.sudoku_size = None
@@ -70,10 +78,7 @@ class Widget(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        w, h = event.size().width(), event.size().height()
-        min_size = min(w, h)
-
-        self.cell_size = min_size // self.matrix_size
+        self.cell_size = min(event.size().width(), event.size().height()) // self.matrix_size
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -92,21 +97,25 @@ class Widget(QWidget):
         x, y = pos.x() // self.cell_size, pos.y() // self.cell_size
 
         # Нельзя изменять дефолтную ячейку
-        if not self.def_num_matrix[x][y]:
-            if event.button() == Qt.LeftButton:
-                self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
-            elif event.button() == Qt.RightButton:
-                self.matrix[x][y] = self.matrix[x][y] - 1 if self.matrix[x][y] > 0 else 9
-            elif event.button() == Qt.MiddleButton:
-                self.matrix[x][y] = 0
+        try:
+            if not self.def_num_matrix[x][y]:
+                if event.button() == Qt.LeftButton:
+                    self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+                elif event.button() == Qt.RightButton:
+                    self.matrix[x][y] = self.matrix[x][y] - 1 if self.matrix[x][y] > 0 else 9
+                elif event.button() == Qt.MiddleButton:
+                    self.matrix[x][y] = 0
 
-            # Получим список решения этой судоку
-            for solution in self.sudoku_solutions:
-                if solution == self.matrix:
-                    QMessageBox.information(None, 'Победа', 'Совпало, мать его!')
-                    break
+                # Получим список решения этой судоку
+                for solution in self.sudoku_solutions:
+                    if solution == self.matrix:
+                        QMessageBox.information(None, 'Победа', 'Совпало, мать его!')
+                        break
 
-            self.update()
+                self.update()
+
+        except IndexError:
+            pass
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -130,25 +139,25 @@ class Widget(QWidget):
         # TODO: Закомментировано
         # Если индекс ячейки под курсором валидный
         if 0 <= self.x_highlight_cell < self.matrix_size and 0 <= self.y_highlight_cell < self.matrix_size:
-        #     # Выделение всего столбца и строки пересекающих ячейку под курсором
-        #     painter.save()
-        #     painter.setBrush(Qt.lightGray)
-        #
-        #     # Выделение строки
-        #     for i in range(self.matrix_size):
-        #         painter.drawRect(i * self.cell_size,
-        #                          self.y_highlight_cell * self.cell_size,
-        #                          self.cell_size,
-        #                          self.cell_size)
-        #
-        #     # Выделение столбца
-        #     for j in range(self.matrix_size):
-        #         painter.drawRect(self.x_highlight_cell * self.cell_size,
-        #                          j * self.cell_size,
-        #                          self.cell_size,
-        #                          self.cell_size)
-        #
-        #     painter.restore()
+            # # Выделение всего столбца и строки пересекающих ячейку под курсором
+            # painter.save()
+            # painter.setBrush(Qt.lightGray)
+            #
+            # # Выделение строки
+            # for i in range(self.matrix_size):
+            #     painter.drawRect(i * self.cell_size,
+            #                      self.y_highlight_cell * self.cell_size,
+            #                      self.cell_size,
+            #                      self.cell_size)
+            #
+            # # Выделение столбца
+            # for j in range(self.matrix_size):
+            #     painter.drawRect(self.x_highlight_cell * self.cell_size,
+            #                      j * self.cell_size,
+            #                      self.cell_size,
+            #                      self.cell_size)
+            #
+            # painter.restore()
 
             x, y = self.x_highlight_cell, self.y_highlight_cell
 
@@ -190,11 +199,20 @@ class Widget(QWidget):
         # Рисование сетки таблицы
         y1, y2 = 0, 0
 
+        factor = min(self.width(), self.height()) / self.default_size
+        size = self.default_pen_size_1
+        size2 = self.default_pen_size_2
+
+        if factor < 1 or factor > 1.25:
+            size *= factor
+            if size < self.min_default_pen_size_2:
+                size = self.min_default_pen_size_2
+
+        painter.save()
+
         for i in range(self.matrix_size + 1):
-            painter.save()
-            painter.setPen(QPen(Qt.black, 5.0 if i % 3 == 0 and i and i < self.matrix_size else 1.0))
+            painter.setPen(QPen(Qt.black, size2 if i % 3 == 0 and i and i < self.matrix_size else size))
             painter.drawLine(0, y1, self.cell_size * self.matrix_size, y2)
-            painter.restore()
 
             y1 += self.cell_size
             y2 += self.cell_size
@@ -202,21 +220,20 @@ class Widget(QWidget):
         x1, x2 = 0, 0
 
         for i in range(self.matrix_size + 1):
-            painter.save()
-            painter.setPen(QPen(Qt.black, 5.0 if i % 3 == 0 and i and i < self.matrix_size else 1.0))
+            painter.setPen(QPen(Qt.black, size2 if i % 3 == 0 and i and i < self.matrix_size else size))
             painter.drawLine(x1, 0, x2, self.cell_size * self.matrix_size)
-            painter.restore()
 
-            # painter.drawLine(x1, 0, x2, self.cell_size * self.matrix_size)
             x1 += self.cell_size
             x2 += self.cell_size
+
+        painter.restore()
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     w = Widget()
-    w.resize(200, 200)
+    # w.resize(200, 200)
     w.show()
 
     sys.exit(app.exec_())
