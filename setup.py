@@ -10,7 +10,7 @@
 from cx_Freeze import setup, Executable
 
 executables = [
-    Executable('sudoku.py')
+    Executable('src/main.py')
 ]
 
 setup(name='sudoku',

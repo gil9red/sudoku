@@ -4,21 +4,22 @@
 __author__ = 'ipetrash'
 
 import copy
-import sys
 
-from PySide.QtGui import QApplication, QWidget, QPainter, QPen, QMessageBox
-from PySide.QtCore import Qt
+from PySide.QtGui import QWidget, QPainter, QPen, QMessageBox, QSizePolicy
+from PySide.QtCore import Qt, Signal
 
 from utils import solver, sudoku_generator
 
 
-class Widget(QWidget):
+class SudokuBoard(QWidget):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle('Sudoku')
 
-        # Пусть будет 20, все-равно после первого события resizeEvent значение изменится
-        self.cell_size = 20
+        # TODO: rem
+        # # Пусть будет 20, все-равно после первого события resizeEvent значение изменится
+        # self.cell_size = 20
         self.matrix_size = 9
 
         self.x_highlight_cell = -1
@@ -27,12 +28,14 @@ class Widget(QWidget):
         self.setMouseTracking(True)
 
         self.default_size = 300
+        self.cell_size = min(self.default_size, self.default_size) // self.matrix_size
 
         self.default_pen_size_1 = 1.0
         self.default_pen_size_2 = 5.0
         self.min_default_pen_size_2 = 2.0
 
         self.resize(self.default_size, self.default_size)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.matrix = None
         self.sudoku_size = None
@@ -41,6 +44,21 @@ class Widget(QWidget):
         self.sudoku_solutions = None
 
         self.new_sudoku()
+
+    change_cell_size = Signal(int)
+    # change_size_font_cell_number = Signal(int)
+
+    @property
+    def cell_size(self):
+        return self.__cell_size
+
+    @cell_size.setter
+    def cell_size(self, val):
+        self.__cell_size = val
+        self.change_cell_size.emit(val)
+
+    # def cell_size(self, size):
+    #     self.cell_size = size
 
     def new_sudoku(self):
         self.matrix, self.sudoku_size = sudoku_generator.gen()
@@ -75,9 +93,16 @@ class Widget(QWidget):
         #         self.update()
         #         break
 
+    # def pos_numbers_panel(self):
+    #     return 0, self.cell_size * self.matrix_size + 5
+    #
+    # def size_numbers_panel(self):
+    #     return self.cell_size * self.matrix_size, self.cell_size + 5
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
+        # num_panel_height = self.size_numbers_panel()[1]
         self.cell_size = min(event.size().width(), event.size().height()) // self.matrix_size
 
     def mouseMoveEvent(self, event):
@@ -117,24 +142,38 @@ class Widget(QWidget):
         except IndexError:
             pass
 
+    @staticmethod
+    def _resize_font(painter, text, size):
+        # Алгоритм изменения размера текста взят из http://stackoverflow.com/a/2204501
+        # Для текущего пришлось немного адаптировать
+        factor = (size / 2) / painter.fontMetrics().width(text)
+        if factor < 1 or factor > 1.25:
+            f = painter.font()
+            point_size = f.pointSizeF() * factor
+            if point_size > 0:
+                f.setPointSizeF(point_size)
+                painter.setFont(f)
+
     def paintEvent(self, event):
         super().paintEvent(event)
 
         painter = QPainter(self)
+
+        painter.save()
 
         # Рисование цифр в ячейки таблицы
         for i in range(self.matrix_size):
             for j in range(self.matrix_size):
                 # Если текущая ячейка относится к дефолтной судоку
                 if self.def_num_matrix[i][j]:
-                    painter.save()
                     # painter.setPen()
                     painter.setBrush(Qt.yellow)
                     x = i * self.cell_size
                     y = j * self.cell_size
                     w, h = self.cell_size, self.cell_size
                     painter.drawRect(x, y, w, h)
-                    painter.restore()
+
+        painter.restore()
 
         # TODO: Закомментировано
         # Если индекс ячейки под курсором валидный
@@ -180,16 +219,7 @@ class Widget(QWidget):
                     continue
 
                 num = str(num)
-
-                # Алгоритм изменения размера текста взят из http://stackoverflow.com/a/2204501
-                # Для текущего пришлось немного адаптировать
-                factor = (self.cell_size / 2) / painter.fontMetrics().width(num)
-                if factor < 1 or factor > 1.25:
-                    f = painter.font()
-                    point_size = f.pointSizeF() * factor
-                    if point_size > 0:
-                        f.setPointSizeF(point_size)
-                        painter.setFont(f)
+                self._resize_font(painter, num, self.cell_size)
 
                 x = i * self.cell_size
                 y = j * self.cell_size
@@ -228,12 +258,22 @@ class Widget(QWidget):
 
         painter.restore()
 
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-
-    w = Widget()
-    # w.resize(200, 200)
-    w.show()
-
-    sys.exit(app.exec_())
+        # # Рисуем панельку с цифрами судоку
+        # numbers_panel_y = self.pos_numbers_panel()[1]
+        # painter.save()
+        #
+        # for i in range(self.matrix_size):
+        #     painter.setBrush(Qt.white)
+        #     painter.drawRect(i * self.cell_size,
+        #                      numbers_panel_y,
+        #                      self.cell_size,
+        #                      self.cell_size)
+        #     num = str(i + 1)
+        #     self._resize_font(painter, num, self.cell_size)
+        #
+        #     x = i * self.cell_size
+        #     y = numbers_panel_y
+        #     w, h = self.cell_size, self.cell_size
+        #     painter.drawText(x, y, w, h, Qt.AlignCenter, num)
+        #
+        # painter.restore()
