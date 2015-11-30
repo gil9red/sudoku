@@ -30,6 +30,7 @@ def play(file_name):
     loop.exec_()
 
 
+# TODO: интересно, а можно вшить те mp3 файлы в ехе?
 SOUND_LIST = glob.glob('sounds/*.mp3')
 
 
