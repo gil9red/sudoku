@@ -5,11 +5,32 @@ __author__ = 'ipetrash'
 
 import copy
 import sys
+import random
+import glob
 
 from PySide.QtGui import QApplication, QWidget, QPainter, QPen, QMessageBox
 from PySide.QtCore import Qt
 
 from utils import solver, sudoku_generator
+
+
+def play(file_name):
+    from PySide.QtCore import QEventLoop
+    from PySide.phonon import Phonon
+
+    audio = Phonon.MediaObject()
+    output = Phonon.AudioOutput(Phonon.MusicCategory)
+    Phonon.createPath(audio, output)
+
+    audio.setCurrentSource(Phonon.MediaSource(file_name))
+    audio.play()
+
+    loop = QEventLoop()
+    audio.finished.connect(loop.quit)
+    loop.exec_()
+
+
+SOUND_LIST = glob.glob('sounds/*.mp3')
 
 
 class Widget(QWidget):
@@ -111,6 +132,12 @@ class Widget(QWidget):
                     if solution == self.matrix:
                         QMessageBox.information(None, 'Победа', 'Совпало, мать его!')
                         break
+
+                # Издаем случайный звук
+                # play(random.choice(SOUND_LIST))
+                import threading
+                t = threading.Thread(target=play, args=(random.choice(SOUND_LIST),))
+                t.start()
 
                 self.update()
 
@@ -228,12 +255,15 @@ class Widget(QWidget):
 
         painter.restore()
 
+    def closeEvent(self, event):
+        super().closeEvent(event)
+        quit()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     w = Widget()
-    # w.resize(200, 200)
     w.show()
 
     sys.exit(app.exec_())
