@@ -161,7 +161,7 @@ class SudokuBoard(QWidget):
 
         painter.save()
 
-        # Рисование цифр в ячейки таблицы
+        # Рисование ячеектаблицы
         for i in range(self.matrix_size):
             for j in range(self.matrix_size):
                 # Если текущая ячейка относится к дефолтной судоку
