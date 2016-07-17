@@ -10,4 +10,4 @@
      * Средняя кнопка: очистить значение
 
 ======
-![](https://raw.githubusercontent.com/gil9red/sudoku/master/screenshot.png)
+![](screenshot.png)
