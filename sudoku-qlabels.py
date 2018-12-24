@@ -9,9 +9,20 @@ __author__ = 'ipetrash'
 import copy
 import sys
 
-# from PySide.QtGui import QApplication, QWidget, QPainter, QPen, QMessageBox
-from PySide.QtGui import *
-from PySide.QtCore import Qt
+try:
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtCore import *
+    from PyQt5.QtGui import *
+
+except:
+    try:
+        from PyQt4.QtGui import *
+        from PyQt4.QtCore import *
+
+    except:
+        from PySide.QtGui import *
+        from PySide.QtCore import *
+
 
 from utils import solver, sudoku_generator
 
