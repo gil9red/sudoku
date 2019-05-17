@@ -4,6 +4,7 @@
 __author__ = 'ipetrash'
 
 
+from collections import defaultdict
 import copy
 import sys
 
@@ -34,6 +35,7 @@ class Widget(QWidget):
         # Пусть будет 20, все-равно после первого события resizeEvent значение изменится
         self.cell_size = 20
         self.matrix_size = 9
+        self.sub_matrix_size = 3
 
         self.x_highlight_cell = -1
         self.y_highlight_cell = -1
@@ -54,9 +56,14 @@ class Widget(QWidget):
         self.def_num_matrix = None
         self.sudoku_solutions = None
 
+        # Список хранит индексы с неправильными значениями. Например, когда одинаковые значения на линии
+        self.invalid_indexes = []
+
         self.new_sudoku()
 
     def new_sudoku(self):
+        self.invalid_indexes.clear()
+
         self.matrix, self.sudoku_size = sudoku_generator.gen()
         self.orig_matrix = copy.deepcopy(self.matrix)
 
@@ -76,18 +83,6 @@ class Widget(QWidget):
         if event.key() == Qt.Key_Space:
             self.new_sudoku()
             self.update()
-
-        # TODO: если и подставлять одно из решений, то решения находить на основе копии текущей таблицы, а не
-        # дефотной
-        # if event.key() == Qt.Key_Space:
-        #     # Получим список решения этой судоку
-        #     for solution in self.sudoku_solutions:
-        #         # Берем самое первое
-        #         self.matrix = copy.deepcopy(solution)
-        #
-        #         # Перерисовываем окно
-        #         self.update()
-        #         break
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -120,35 +115,85 @@ class Widget(QWidget):
                 elif event.button() == Qt.MiddleButton:
                     self.matrix[x][y] = 0
 
+                self.invalid_indexes.clear()
+
+                # В одной плоскости
+                for i in range(self.matrix_size):
+                    num_by_indexes = defaultdict(list)
+
+                    for j in range(self.matrix_size):
+                        num = self.matrix[i][j]
+                        if num:
+                            num_by_indexes[num].append((i, j))
+
+                    for k, v in num_by_indexes.items():
+                        if len(v) > 1:
+                            self.invalid_indexes += v
+
+                # В другой плоскости
+                for i in range(self.matrix_size):
+                    num_by_indexes = defaultdict(list)
+
+                    for j in range(self.matrix_size):
+                        num = self.matrix[j][i]
+                        if num:
+                            num_by_indexes[num].append((j, i))
+
+                    for k, v in num_by_indexes.items():
+                        if len(v) > 1:
+                            self.invalid_indexes += v
+
+                # В подквадратах
+                for si in range(0, self.matrix_size, self.sub_matrix_size):
+                    for sj in range(0, self.matrix_size, self.sub_matrix_size):
+                        num_by_indexes = defaultdict(list)
+                        sub_indexes = []
+
+                        for i in range(self.sub_matrix_size):
+                            for j in range(self.sub_matrix_size):
+                                sub_indexes.append((si + i, sj + j))
+
+                        for i, j in sub_indexes:
+                            num = self.matrix[i][j]
+                            if num:
+                                num_by_indexes[num].append((i, j))
+
+                        for k, v in num_by_indexes.items():
+                            if len(v) > 1:
+                                self.invalid_indexes += v
+
+                self.update()
+
                 # Получим список решения этой судоку
                 for solution in self.sudoku_solutions:
                     if solution == self.matrix:
-                        QMessageBox.information(None, 'Победа', 'Совпало, мать его!')
+                        QMessageBox.information(self, 'Победа', 'Совпало, мать его!')
                         break
-
-                self.update()
 
         except IndexError:
             pass
 
-    def paintEvent(self, event):
-        super().paintEvent(event)
+    def _draw_background_cell(self, painter: QPainter):
+        painter.save()
 
-        painter = QPainter(self)
-
-        # Рисование цифр в ячейки таблицы
         for i in range(self.matrix_size):
             for j in range(self.matrix_size):
-                # Если текущая ячейка относится к дефолтной судоку
-                if self.def_num_matrix[i][j]:
-                    painter.save()
-                    # painter.setPen()
-                    painter.setBrush(Qt.yellow)
-                    x = i * self.cell_size
-                    y = j * self.cell_size
-                    w, h = self.cell_size, self.cell_size
-                    painter.drawRect(x, y, w, h)
-                    painter.restore()
+                # Выделяем красным ячейки с неправильными значениями
+                if (i, j) in self.invalid_indexes:
+                    color = Qt.red
+
+                elif self.def_num_matrix[i][j]:
+                    color = Qt.yellow
+
+                else:
+                    color = Qt.white
+
+                painter.setBrush(color)
+
+                x = i * self.cell_size
+                y = j * self.cell_size
+                w, h = self.cell_size, self.cell_size
+                painter.drawRect(x, y, w, h)
 
         # TODO: Закомментировано
         # Если индекс ячейки под курсором валидный
@@ -178,15 +223,19 @@ class Widget(QWidget):
             # Не подсвечиваем дефолтную ячейку
             if not self.def_num_matrix[x][y]:
                 # Выделение ячейки под курсором
-                painter.save()
                 painter.setBrush(Qt.darkYellow)
-                painter.drawRect(x * self.cell_size,
-                                 y * self.cell_size,
-                                 self.cell_size,
-                                 self.cell_size)
-                painter.restore()
+                painter.drawRect(
+                    x * self.cell_size,
+                    y * self.cell_size,
+                    self.cell_size,
+                    self.cell_size
+                )
 
-        # Рисование цифр в ячейки таблицы
+        painter.restore()
+
+    def _draw_cell_numbers(self, painter: QPainter):
+        painter.save()
+
         for i in range(self.matrix_size):
             for j in range(self.matrix_size):
                 num = self.matrix[i][j]
@@ -210,7 +259,11 @@ class Widget(QWidget):
                 w, h = self.cell_size, self.cell_size
                 painter.drawText(x, y, w, h, Qt.AlignCenter, num)
 
-        # Рисование сетки таблицы
+        painter.restore()
+
+    def _draw_grid(self, painter: QPainter):
+        painter.save()
+
         y1, y2 = 0, 0
 
         factor = min(self.width(), self.height()) / self.default_size
@@ -222,10 +275,11 @@ class Widget(QWidget):
             if size < self.min_default_pen_size_2:
                 size = self.min_default_pen_size_2
 
-        painter.save()
+        def _is_border(i):
+            return i % self.sub_matrix_size == 0 and i and i < self.matrix_size
 
         for i in range(self.matrix_size + 1):
-            painter.setPen(QPen(Qt.black, size2 if i % 3 == 0 and i and i < self.matrix_size else size))
+            painter.setPen(QPen(Qt.black, size2 if _is_border(i) else size))
             painter.drawLine(0, y1, self.cell_size * self.matrix_size, y2)
 
             y1 += self.cell_size
@@ -234,13 +288,26 @@ class Widget(QWidget):
         x1, x2 = 0, 0
 
         for i in range(self.matrix_size + 1):
-            painter.setPen(QPen(Qt.black, size2 if i % 3 == 0 and i and i < self.matrix_size else size))
+            painter.setPen(QPen(Qt.black, size2 if _is_border(i) else size))
             painter.drawLine(x1, 0, x2, self.cell_size * self.matrix_size)
 
             x1 += self.cell_size
             x2 += self.cell_size
 
         painter.restore()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+        painter = QPainter(self)
+
+        self._draw_background_cell(painter)
+
+        # Рисование цифр в ячейки таблицы
+        self._draw_cell_numbers(painter)
+
+        # Рисование сетки таблицы
+        self._draw_grid(painter)
 
 
 if __name__ == '__main__':
