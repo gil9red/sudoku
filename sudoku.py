@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__author__ = 'ipetrash'
+__author__ = "ipetrash"
 
 
-from collections import defaultdict
 import copy
 import sys
+from collections import defaultdict
 
 try:
     from PyQt5.QtWidgets import *
@@ -30,7 +30,7 @@ class Widget(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('Sudoku')
+        self.setWindowTitle("Sudoku")
 
         # Пусть будет 20, все-равно после первого события resizeEvent значение изменится
         self.cell_size = 20
@@ -69,27 +69,27 @@ class Widget(QWidget):
 
         # Булевая матрица, описывающая местоположения элементов судоку, которые будут по умолчанию.
         # Их нельзя редактировать и выглядят внешне по другому
-        self.def_num_matrix = [
-            [bool(i) for i in row]
-            for row in self.orig_matrix
-        ]
+        self.def_num_matrix = [[bool(i) for i in row] for row in self.orig_matrix]
 
         # Получим список решения этой судоку
-        self.sudoku_solutions = list(solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix)))
+        self.sudoku_solutions = list(
+            solver.solve_sudoku(self.sudoku_size, copy.deepcopy(self.orig_matrix))
+        )
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent):
         super().keyPressEvent(event)
 
         if event.key() == Qt.Key_Space:
             self.new_sudoku()
             self.update()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
 
-        self.cell_size = min(event.size().width(), event.size().height()) // self.matrix_size
+        min_size = min(event.size().width(), event.size().height())
+        self.cell_size = min_size // self.matrix_size
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         super().mouseMoveEvent(event)
 
         pos = event.pos()
@@ -99,7 +99,7 @@ class Widget(QWidget):
 
         self.update()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         super().mouseReleaseEvent(event)
 
         pos = event.pos()
@@ -109,9 +109,13 @@ class Widget(QWidget):
         try:
             if not self.def_num_matrix[x][y]:
                 if event.button() == Qt.LeftButton:
-                    self.matrix[x][y] = self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+                    self.matrix[x][y] = (
+                        self.matrix[x][y] + 1 if self.matrix[x][y] < 9 else 0
+                    )
                 elif event.button() == Qt.RightButton:
-                    self.matrix[x][y] = self.matrix[x][y] - 1 if self.matrix[x][y] > 0 else 9
+                    self.matrix[x][y] = (
+                        self.matrix[x][y] - 1 if self.matrix[x][y] > 0 else 9
+                    )
                 elif event.button() == Qt.MiddleButton:
                     self.matrix[x][y] = 0
 
@@ -167,7 +171,7 @@ class Widget(QWidget):
                 # Получим список решения этой судоку
                 for solution in self.sudoku_solutions:
                     if solution == self.matrix:
-                        QMessageBox.information(self, 'Победа', 'Совпало, мать его!')
+                        QMessageBox.information(self, "Победа", "Совпало, мать его!")
                         break
 
         except IndexError:
@@ -197,7 +201,10 @@ class Widget(QWidget):
 
         # TODO: Закомментировано
         # Если индекс ячейки под курсором валидный
-        if 0 <= self.x_highlight_cell < self.matrix_size and 0 <= self.y_highlight_cell < self.matrix_size:
+        if (
+            0 <= self.x_highlight_cell < self.matrix_size
+            and 0 <= self.y_highlight_cell < self.matrix_size
+        ):
             # # Выделение всего столбца и строки пересекающих ячейку под курсором
             # painter.save()
             # painter.setBrush(Qt.lightGray)
@@ -228,7 +235,7 @@ class Widget(QWidget):
                     x * self.cell_size,
                     y * self.cell_size,
                     self.cell_size,
-                    self.cell_size
+                    self.cell_size,
                 )
 
         painter.restore()
@@ -296,7 +303,7 @@ class Widget(QWidget):
 
         painter.restore()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         super().paintEvent(event)
 
         painter = QPainter(self)
@@ -310,7 +317,7 @@ class Widget(QWidget):
         self._draw_grid(painter)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     w = Widget()
